@@ -1,6 +1,12 @@
 <script setup>
   import {reactive, ref} from "vue";
 
+  const result = reactive({
+    processes: [],
+    averageWaitingTime: 0,
+    averageTurnaroundTime: 0
+  })
+
   class Process {
     constructor(pid, at, bt, priority) {
       this.pid = pid
@@ -16,40 +22,43 @@
 
   const scheduleProcesses = (processes) => {
     // Sort processes by their priority
-    processes.sort((a, b) => {
-      if (a.arrivalTime === b.arrivalTime) {
-        return b.priority - a.priority;
-      }
-      return a.arrivalTime - b.arrivalTime;
-    });
+    processes.sort((a, b) => a.priority - b.priority);
 
-    let currentTime = 0
     let totalWaitingTime = 0
     let totalTurnaroundTime = 0
 
-    for (const process of processes) {
-      while (process.arrivalTime > currentTime) {
-        currentTime++
-      }
+    processes[0].completionTime = processes[0].arrivalTime + processes[0].burstTime
+    processes[0].turnaroundTime = processes[0].completionTime - processes[0].arrivalTime
+    processes[0].waitingTime = processes[0].turnaroundTime - processes[0].burstTime
 
-      process.completionTime = currentTime + process.burstTime;
-      process.waitingTime = process.completionTime - process.arrivalTime - process.burstTime;
+    totalWaitingTime += processes[0].waitingTime
+    totalTurnaroundTime += processes[0].turnaroundTime
+
+    for (let i = 1; i < processes.length; i++) {
+      const process = processes[i]
+
+      process.completionTime = processes[i-1].completionTime + process.burstTime
       process.turnaroundTime = process.completionTime - process.arrivalTime;
+      process.waitingTime = process.turnaroundTime - process.burstTime
 
       totalWaitingTime += process.waitingTime;
       totalTurnaroundTime += process.turnaroundTime;
-
-      currentTime = process.completionTime;
     }
 
     const averageWaitingTime = totalWaitingTime / processes.length
     const averageTurnaroundTime = totalTurnaroundTime / processes.length
 
-    console.log("Result:");
-    console.table(processes)
+    // Put results in array
+    processes.forEach(p => result.processes.push(p))
 
-    console.log("Average Waiting Time:", averageWaitingTime);
-    console.log("Average Turnaround Time:", averageTurnaroundTime);
+    result.averageWaitingTime = averageWaitingTime
+    result.averageTurnaroundTime = averageTurnaroundTime
+
+    // console.log("Result:");
+    // console.table(processes)
+    //
+    // console.log("Average Waiting Time:", averageWaitingTime);
+    // console.log("Average Turnaround Time:", averageTurnaroundTime);
   }
 
   const numberOfProcesses = ref(2)
@@ -59,25 +68,25 @@
       time: 0
     },
     {
-      time: 0
+      time: 1
     }
   ])
 
   const burstTimes = reactive([
     {
-      time: 0
+      time: 3
     },
     {
-      time: 0
+      time: 6
     }
   ])
 
   const priorities = reactive([
     {
-      value: 0
+      value: 3
     },
     {
-      value: 0
+      value: 4
     }
   ])
 
@@ -116,43 +125,17 @@
     let processes = []
 
     for (let i = 0; i < numberOfProcesses.value; i++) {
-      processes.push(new Process(i, arrivalTimes[i].time, burstTimes[i].time, priorities[i].value))
+      processes.push(new Process(i+1, arrivalTimes[i].time, burstTimes[i].time, priorities[i].value))
     }
 
     // Execute the processes
     scheduleProcesses(processes)
-    //
-    //
-    // const { turnaroundTimes, waitingTimes } = scheduler.execute();
-    //
-    // // Display table
-    // console.log("| Process Id | Waiting Time | Turnaround Time |");
-    // console.log("|------------|---------------|------------------|");
-    //
-    // let totalWaitingTime = 0;
-    // let totalTurnaroundTime = 0;
-    //
-    // for (const process of scheduler.queue) {
-    //   const processWaitingTime = waitingTimes.find((item) => item.id === process.pid).waitingTime;
-    //   const processTurnaroundTime = turnaroundTimes.find((item) => item.id === process.pid).turnaroundTime;
-    //
-    //   totalWaitingTime += processWaitingTime;
-    //   totalTurnaroundTime += processTurnaroundTime;
-    //
-    //   console.log(`| ${process.pid + 1}          | ${processWaitingTime}             | ${processTurnaroundTime}                |`);
-    // }
-    //
-    // const averageWaitingTime = totalWaitingTime / scheduler.queue.length;
-    // const averageTurnaroundTime = totalTurnaroundTime / scheduler.queue.length;
-    //
-    // console.log(`\nAverage Waiting Time: ${averageWaitingTime}`);
-    // console.log(`Average Turnaround Time: ${averageTurnaroundTime}`);
   }
 </script>
 
 <template>
-  <main>
-    <div class="card bg-dark text-white">
+  <section class="d-flex gap-4">
+    <div class="card p-2 shadow w-100">
       <div class="card-body">
         <h5 class="card-title mb-4">
           Priority (Non-preemptive)
@@ -228,7 +211,39 @@
 
       </div>
     </div>
-  </main>
+    <div class="card p-2 shadow w-100">
+      <div class="card-body">
+        <h5 class="card-title mb-4">
+          Results
+        </h5>
+
+        <div v-if="result.processes.length > 0">
+          <table class="table">
+            <thead>
+            <tr>
+              <th scope="col">PID</th>
+              <th scope="col">Waiting Time</th>
+              <th scope="col">Turnaround Time</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr v-for="process in result.processes">
+              <th scope="row">{{ process.pid }}</th>
+              <td>{{ process.waitingTime }}</td>
+              <td>{{ process.turnaroundTime }}</td>
+            </tr>
+            </tbody>
+          </table>
+
+          <p>Average Waiting Time: {{ result.averageWaitingTime }}</p>
+          <p>Average Turnaround Time: {{ result.averageTurnaroundTime }}</p>
+        </div>
+
+        <div v-else>No results yet.</div>
+
+      </div>
+    </div>
+  </section>
 </template>
 
 <style scoped>
