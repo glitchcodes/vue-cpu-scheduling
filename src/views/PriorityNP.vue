@@ -22,7 +22,12 @@
 
   const scheduleProcesses = (processes) => {
     // Sort processes by their priority
-    processes.sort((a, b) => a.priority - b.priority);
+    processes.sort((a, b) => {
+        if (a.arrivalTime === b.arrivalTime) {
+            return a.priority - b.priority
+        }
+        return a.arrivalTime - b.arrivalTime
+    });
 
     let totalWaitingTime = 0
     let totalTurnaroundTime = 0
@@ -121,6 +126,11 @@
   }
 
   const calculatePriority = () => {
+    // Reset results
+    result.processes = []
+    result.averageTurnaroundTime = 0
+    result.averageWaitingTime = 0
+
     // Add the values to an array
     let processes = []
 
