@@ -50,6 +50,7 @@ nav a:first-of-type {
 
 .wrapper {
   text-align: center;
+  margin-bottom: 2rem;
 }
 
 .green {
