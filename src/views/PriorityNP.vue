@@ -32,6 +32,8 @@
     let totalWaitingTime = 0
     let totalTurnaroundTime = 0
 
+    // Get the completion time, turnaround time and waiting time for the 1st process
+    // For some reason, tracking current time gives different results
     processes[0].completionTime = processes[0].arrivalTime + processes[0].burstTime
     processes[0].turnaroundTime = processes[0].completionTime - processes[0].arrivalTime
     processes[0].waitingTime = processes[0].turnaroundTime - processes[0].burstTime
@@ -39,6 +41,7 @@
     totalWaitingTime += processes[0].waitingTime
     totalTurnaroundTime += processes[0].turnaroundTime
 
+    // Calculate every process starting with 2nd process
     for (let i = 1; i < processes.length; i++) {
       const process = processes[i]
 
@@ -58,12 +61,6 @@
 
     result.averageWaitingTime = averageWaitingTime
     result.averageTurnaroundTime = averageTurnaroundTime
-
-    // console.log("Result:");
-    // console.table(processes)
-    //
-    // console.log("Average Waiting Time:", averageWaitingTime);
-    // console.log("Average Turnaround Time:", averageTurnaroundTime);
   }
 
   const numberOfProcesses = ref(2)
