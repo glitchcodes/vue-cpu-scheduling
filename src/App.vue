@@ -17,6 +17,10 @@ import { RouterLink, RouterView } from 'vue-router'
   </header>
 
   <RouterView />
+
+  <footer>
+    <a href="https://github.com/glitchcodes/cpu-disk-scheduling" target="_blank">Source code is available on Github</a>
+  </footer>
 </template>
 
 <style scoped>
