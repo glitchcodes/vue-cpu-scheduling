@@ -141,8 +141,8 @@
 </script>
 
 <template>
-  <section class="d-flex gap-4">
-    <div class="card p-2 shadow w-100">
+  <section class="d-block d-md-flex gap-4">
+    <div class="card p-2 mb-3 shadow w-100">
       <div class="card-body">
         <h5 class="card-title mb-4">
           Priority (Non-preemptive)
@@ -218,7 +218,7 @@
 
       </div>
     </div>
-    <div class="card p-2 shadow w-100">
+    <div class="card p-2 mb-3 shadow w-100">
       <div class="card-body">
         <h5 class="card-title mb-4">
           Results
