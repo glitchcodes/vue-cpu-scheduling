@@ -5,12 +5,13 @@ import { RouterLink, RouterView } from 'vue-router'
 <template>
   <header>
     <div class="wrapper">
-      <h2 class="green">CPU Scheduling</h2>
+      <h2 class="green">CPU / Disk Scheduling</h2>
       <h5>Choose your algorithm</h5>
 
       <nav>
         <RouterLink to="/">Priority (NP)</RouterLink>
         <RouterLink to="/mqs">MQS</RouterLink>
+        <RouterLink to="/sstf">SSTF</RouterLink>
       </nav>
     </div>
   </header>
