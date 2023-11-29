@@ -13,7 +13,7 @@
   ])
 
   const startingPosition = ref(0)
-  const trackSize = ref(0)
+  // const trackSize = ref(0)
   const seekRate = ref(0)
 
   const totalHeadMovement = ref(0)
@@ -90,10 +90,10 @@
           <input type="number" class="form-control" v-model="startingPosition" >
         </div>
 
-        <div class="mb-3">
-          <label class="form-label">Track Size</label>
-          <input type="number" class="form-control" v-model="trackSize" >
-        </div>
+<!--        <div class="mb-3">-->
+<!--          <label class="form-label">Track Size</label>-->
+<!--          <input type="number" class="form-control" v-model="trackSize" >-->
+<!--        </div>-->
 
         <div class="mb-3">
           <label class="form-label">Seek Rate</label>
