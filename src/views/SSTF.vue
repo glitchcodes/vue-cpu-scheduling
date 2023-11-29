@@ -50,16 +50,12 @@
       requests.push(requestInputs[i].location)
     }
 
-    console.log(requests)
-
     while (requests.length > 0) {
       let shortestDistance = Number.MAX_SAFE_INTEGER
       let nextIndex = -1
 
       for (let i = 0; i < requests.length; i++) {
         const distance = Math.abs(currentPosition - requests[i])
-
-        console.log(requests[i])
 
         if (distance < shortestDistance) {
           shortestDistance = distance
