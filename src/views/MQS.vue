@@ -6,7 +6,7 @@
   const prioritiesInput = ref("")
 
   const arrivalTimeInput = ref("0 3 5 9 12 10 2")
-  const burstTimeInput = ref("3 10 8 12 20 29 1")
+  const burstTimeInput = ref("3 10 8 12 20 29 8")
   const queueInput = ref("0 1 2 1 0 2 0")
 
   const levels = reactive([
@@ -24,10 +24,11 @@
   const processes = reactive([])
 
   class Process {
-    constructor(pid, at, bt, level) {
+    constructor(pid, at, bt, level, priority) {
       this.pid = pid
       this.arrivalTime = at
       this.burstTime = bt
+      this.priority = priority || null
       this.level = level
 
       this.waitingTime = 0
@@ -47,16 +48,6 @@
 
     addProcess(process) {
       this.queues[process.level].push(process)
-    }
-
-    runScheduler() {
-      let currentTime = 0
-      let totalWaitingTime = 0
-      let totalTurnaroundTime = 0
-
-      for (const process in processes) {
-        this.addProcess(process)
-      }
     }
   }
 
@@ -100,9 +91,20 @@
       return;
     }
 
-    const arrivalTimes = arrivalTimeInput.value.split(/(\s+)/).filter( (e) => { return e.trim().length > 0 } );
-    const burstTimes = burstTimeInput.value.split(/(\s+)/).filter( (e) => { return e.trim().length > 0 } );
-    const queues = queueInput.value.split(/(\s+)/).filter( (e) => { return e.trim().length > 0 } );
+    const arrivalTimes = arrivalTimeInput.value.split(/(\s+)/).filter((e) => {
+      return e.trim().length > 0
+    });
+    const burstTimes = burstTimeInput.value.split(/(\s+)/).filter((e) => {
+      return e.trim().length > 0
+    });
+    const priorities = prioritiesInput.value.split(/(\s+)/).filter((e) => {
+      return e.trim().length > 0
+    });
+    const queues = queueInput.value.split(/(\s+)/).filter((e) => {
+      return e.trim().length > 0
+    });
+
+
 
 
     // Validate both fields have the same length
@@ -112,24 +114,163 @@
     }
 
     const scheduler = new Scheduler()
-    let currentQueue = scheduler.queues[0]
-    let currentTime = 0
+
+    let results = []
+    for (let i = 1; i <= numberOfQueue.value; i++) {
+      results.push([]) // Push empty arrays
+    }
+
     let totalWaitingTime = 0
     let turnaroundTime = 0
 
     for (let i = 0; i < arrivalTimes.length; i++) {
-      const process = new Process(i + 1, arrivalTimes[i], burstTimes[i], queues[i])
+      const process = new Process(i + 1, parseInt(arrivalTimes[i]), parseInt(burstTimes[i]), parseInt(queues[i]))
       scheduler.addProcess(process)
     }
 
-    // Run first queue
-    if (levels[0].value === 0) {
-      const processes = currentQueue.sort((a,b) => a.arrivalTime - b.arrivalTime)
+    // Level codes
+    // 0 = FCFS
+    // 1 = SJF
+    // 2 = Priority
+    // 3 = RR
+    for (let i = 0; i < scheduler.queues.length; i++) {
+      const queue = scheduler.queues[i]
 
-      for (const process of processes) {
-        // process.waitingTime = currentTime - process.
+      switch (levels[i].value) {
+        case 0:
+          results[i] = (runFCFS(queue));
+          break;
+        case 1:
+          results[i] = runSJF(queue)
+          break;
+        case 2:
+          results[i] = runPriority(queue)
+          break;
+        // case 3:
+        //   results = runRR(queue)
+        //   break;
+        default:
+          break;
       }
+
+      // totalWaitingTime += results.waitingTime
+      // turnaroundTime += results.turnaroundTime
     }
+
+    console.log(calculateAverageWaitingTime(results))
+  }
+
+  const calculateAverageWaitingTime = (results) => {
+    const totalWaitingTime = results.reduce((acc, curr) => acc + curr.waitingTime, 0)
+    return totalWaitingTime / results.length
+  }
+
+  const runFCFS = (queue) => {
+    const processes = queue.sort((a, b) => a.arrivalTime - b.arrivalTime)
+
+    let wt = []
+    let tat = []
+    let waitingTime = 0
+    let turnaroundTime = 0
+    wt[0] = 0;
+
+    // Calculate waiting time and turnaround time for every process
+    for (let j = 1; j < processes.length; j++) {
+      wt[j] = (processes[j - 1].arrivalTime + processes[j - 1].burstTime + wt[j - 1]) - processes[j].arrivalTime;
+
+      // If waiting time is negative, change it to zero
+      if (wt[j] < 0) {
+        wt[j] = 0;
+      }
+
+      waitingTime += wt[j]
+    }
+
+    // Calculate turnaround time
+    for (let k = 0; k < processes.length; k++) {
+      tat[k] = processes[k].burstTime + wt[k];
+      turnaroundTime += tat[k]
+    }
+
+    console.log("FCFS Results: ")
+    console.log("Avg Waiting time: " + waitingTime / processes.length)
+    console.log("Avg Turnaround time: " + turnaroundTime / processes.length)
+
+    return { waitingTime, turnaroundTime }
+  }
+
+  const runSJF = (queue) => {
+    const processes = queue.sort((a, b) => a.burstTime - b.burstTime)
+
+    let wt = []
+    let tat = []
+    let waitingTime = 0
+    let turnaroundTime = 0
+    wt[0] = 0;
+
+    // Calculate waiting time and turnaround time for every process
+    for (let j = 1; j < processes.length; j++) {
+      wt[j] = (processes[j - 1].arrivalTime + processes[j - 1].burstTime + wt[j - 1]) - processes[j].arrivalTime;
+
+      // If waiting time is negative, change it to zero
+      if (wt[j] < 0) {
+        wt[j] = 0;
+      }
+
+      waitingTime += wt[j]
+    }
+
+    // Calculate turnaround time
+    for (let k = 0; k < processes.length; k++) {
+      tat[k] = processes[k].burstTime + wt[k];
+      turnaroundTime += tat[k]
+    }
+
+    console.log("SJF Results: ")
+    console.log("Avg Waiting time: " + waitingTime / processes.length)
+    console.log("Avg Turnaround time: " + turnaroundTime / processes.length)
+
+    return { waitingTime, turnaroundTime }
+  }
+
+  // TODO: Priority is not working
+  const runPriority = (queue) => {
+    const processes = queue.sort((a, b) => {
+      if (a.arrivalTime === b.arrivalTime) {
+        return a.priority - b.priority
+      }
+      return a.arrivalTime - b.arrivalTime
+    });
+
+    let wt = []
+    let tat = []
+    let waitingTime = 0
+    let turnaroundTime = 0
+    wt[0] = 0;
+
+    // Calculate waiting time and turnaround time for every process
+    for (let j = 1; j < processes.length; j++) {
+      wt[j] = (processes[j - 1].arrivalTime + processes[j - 1].burstTime + wt[j - 1]) - processes[j].arrivalTime;
+
+      // If waiting time is negative, change it to zero
+      if (wt[j] < 0) {
+        wt[j] = 0;
+      }
+
+      console.log("Priority Results: ")
+      console.log("Avg Waiting time: " + waitingTime / processes.length)
+      console.log("Avg Turnaround time: " + turnaroundTime / processes.length)
+
+      waitingTime += wt[j]
+    }
+
+    // Calculate turnaround time
+    for (let k = 0; k < processes.length; k++) {
+      tat[k] = processes[k].burstTime + wt[k];
+      turnaroundTime += tat[k]
+    }
+
+    return { waitingTime, turnaroundTime }
   }
 
 </script>
