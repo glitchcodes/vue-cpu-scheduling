@@ -2,74 +2,95 @@
   import { ref, reactive } from "vue";
 
   const numberOfQueue = ref(3)
-  const quantumInput = ref(0)
-  const prioritiesInput = ref("")
 
-  const arrivalTimeInput = ref("0 3 5 9 12 10 2")
-  const burstTimeInput = ref("3 10 8 12 20 29 8")
-  const queueInput = ref("0 1 2 1 0 2 0")
+  const arrivalTimeInput = ref("0 1 2 3")
+  const burstTimeInput = ref("15 10 20 6")
+  const queueInput = ref("0 1 0 1")
 
-  const levels = reactive([
-    {
-      value: 0
-    },
-    {
-      value: 1
-    },
-    {
-      value: 2
-    }
-  ])
+  const waitingTimes = reactive([])
+  const completionTimes = reactive([])
+  const averageWaitingTime = ref(0)
+  const averageTurnaroundTime = ref(0)
 
   const processes = reactive([])
 
   class Process {
-    constructor(pid, at, bt, level, priority) {
+    constructor(pid, at, bt, level) {
       this.pid = pid
       this.arrivalTime = at
       this.burstTime = bt
-      this.priority = priority || null
       this.level = level
 
       this.waitingTime = 0
-      this.turnaroundTime = 0
+      this.completionTime = 0
     }
   }
 
   class Scheduler {
     constructor() {
       this.queues = []
-      this.quantum = quantumInput.value
-
-      for (let i = 1; i <= numberOfQueue.value; i++) {
-        this.queues.push([]) // Push empty arrays
-      }
+      this.waitingTimes = []
+      this.completionTimes = []
     }
 
     addProcess(process) {
+      if (!this.queues[process.level]) {
+        this.queues[process.level] = []
+      }
+
       this.queues[process.level].push(process)
     }
   }
 
-  const updateForms = () => {
-    if (numberOfQueue.value < 1) {
-      alert("Minimum no. of queue is 1")
-      numberOfQueue.value = 1
-      return
+  const runFCFS = (queue, scheduler) => {
+    const processes = queue.sort((a, b) => a.arrivalTime - b.arrivalTime)
+
+    // For next queue
+    let previousCT;
+
+    scheduler.waitingTimes.push(0)
+
+    processes[0].completionTime = processes[0].burstTime
+    processes[0].waitingTime = 0
+
+    scheduler.completionTimes.push(processes[0].completionTime)
+
+    // Calculate waiting time and turnaround time for every process
+    for (let j = 1; j < processes.length; j++) {
+      processes[j].waitingTime += processes[j - 1].completionTime
+      processes[j].completionTime += processes[j - 1].completionTime + processes[j].burstTime
+
+      scheduler.waitingTimes.push(processes[j].waitingTime)
+      scheduler.completionTimes.push(processes[j].completionTime)
+
+      if (j === processes.length - 1) {
+        previousCT = processes[j].completionTime
+      }
     }
 
-    if (numberOfQueue.value > 3) {
-      alert("Maximum no. of queue is 3")
-      numberOfQueue.value = 3
-      return
-    }
+    return { previousCT }
+  }
 
-    levels.length = 0
+  const runSJF = (queue, previousCT, scheduler) => {
+    const processes = queue.sort((a, b) => a.burstTime - b.burstTime)
 
-    for (let i = 0; i < numberOfQueue.value; i++) {
-      levels.push({
-        value: 0
-      })
+    processes[0].waitingTime = previousCT
+    processes[0].completionTime = processes[0].waitingTime + processes[0].burstTime
+
+    scheduler.waitingTimes.push(processes[0].waitingTime)
+    scheduler.completionTimes.push(processes[0].completionTime)
+
+    // Calculate waiting time and turnaround time for every process
+    for (let j = 1; j < processes.length; j++) {
+      processes[j].waitingTime += processes[j - 1].completionTime
+      processes[j].completionTime += processes[j - 1].completionTime + processes[j].burstTime
+
+      scheduler.waitingTimes.push(processes[j].waitingTime)
+      scheduler.completionTimes.push(processes[j].completionTime)
+
+      if (j === processes.length - 1) {
+        previousCT = processes[j].completionTime
+      }
     }
   }
 
@@ -97,14 +118,9 @@
     const burstTimes = burstTimeInput.value.split(/(\s+)/).filter((e) => {
       return e.trim().length > 0
     });
-    const priorities = prioritiesInput.value.split(/(\s+)/).filter((e) => {
-      return e.trim().length > 0
-    });
     const queues = queueInput.value.split(/(\s+)/).filter((e) => {
       return e.trim().length > 0
     });
-
-
 
 
     // Validate both fields have the same length
@@ -116,12 +132,7 @@
     const scheduler = new Scheduler()
 
     let results = []
-    for (let i = 1; i <= numberOfQueue.value; i++) {
-      results.push([]) // Push empty arrays
-    }
 
-    let totalWaitingTime = 0
-    let turnaroundTime = 0
 
     for (let i = 0; i < arrivalTimes.length; i++) {
       const process = new Process(i + 1, parseInt(arrivalTimes[i]), parseInt(burstTimes[i]), parseInt(queues[i]))
@@ -131,147 +142,46 @@
     // Level codes
     // 0 = FCFS
     // 1 = SJF
-    // 2 = Priority
-    // 3 = RR
+
+    let fcfsResults;
+
     for (let i = 0; i < scheduler.queues.length; i++) {
       const queue = scheduler.queues[i]
+      // console.log(queue)
 
-      switch (levels[i].value) {
+      switch (parseInt(queues[i])) {
         case 0:
-          results[i] = (runFCFS(queue));
+          fcfsResults = (runFCFS(queue, scheduler));
+          queue.forEach((process) => {
+            processes.push(process)
+          })
           break;
         case 1:
-          results[i] = runSJF(queue)
-          break;
-        case 2:
-          results[i] = runPriority(queue)
-          break;
-        // case 3:
-        //   results = runRR(queue)
-        //   break;
-        default:
+          runSJF(queue, fcfsResults.previousCT, scheduler)
+          queue.forEach((process) => {
+            processes.push(process)
+          })
           break;
       }
 
-      // totalWaitingTime += results.waitingTime
-      // turnaroundTime += results.turnaroundTime
     }
 
-    console.log(calculateAverageWaitingTime(results))
+    scheduler.waitingTimes.forEach((wt) => {
+      waitingTimes.push(wt)
+    })
+
+    scheduler.completionTimes.forEach((ct) => {
+      completionTimes.push(ct)
+    })
+
+    averageWaitingTime.value = waitingTimes.reduce((a, b) => a + b, 0) / waitingTimes.length
+    averageTurnaroundTime.value = completionTimes.reduce((a, b) => a + b, 0) / completionTimes.length
+
+    console.log("waiting times: " + scheduler.waitingTimes)
+    console.log("average waiting time: " + scheduler.waitingTimes.reduce((a, b) => a + b, 0) / scheduler.waitingTimes.length)
+
   }
 
-  const calculateAverageWaitingTime = (results) => {
-    const totalWaitingTime = results.reduce((acc, curr) => acc + curr.waitingTime, 0)
-    return totalWaitingTime / results.length
-  }
-
-  const runFCFS = (queue) => {
-    const processes = queue.sort((a, b) => a.arrivalTime - b.arrivalTime)
-
-    let wt = []
-    let tat = []
-    let waitingTime = 0
-    let turnaroundTime = 0
-    wt[0] = 0;
-
-    // Calculate waiting time and turnaround time for every process
-    for (let j = 1; j < processes.length; j++) {
-      wt[j] = (processes[j - 1].arrivalTime + processes[j - 1].burstTime + wt[j - 1]) - processes[j].arrivalTime;
-
-      // If waiting time is negative, change it to zero
-      if (wt[j] < 0) {
-        wt[j] = 0;
-      }
-
-      waitingTime += wt[j]
-    }
-
-    // Calculate turnaround time
-    for (let k = 0; k < processes.length; k++) {
-      tat[k] = processes[k].burstTime + wt[k];
-      turnaroundTime += tat[k]
-    }
-
-    console.log("FCFS Results: ")
-    console.log("Avg Waiting time: " + waitingTime / processes.length)
-    console.log("Avg Turnaround time: " + turnaroundTime / processes.length)
-
-    return { waitingTime, turnaroundTime }
-  }
-
-  const runSJF = (queue) => {
-    const processes = queue.sort((a, b) => a.burstTime - b.burstTime)
-
-    let wt = []
-    let tat = []
-    let waitingTime = 0
-    let turnaroundTime = 0
-    wt[0] = 0;
-
-    // Calculate waiting time and turnaround time for every process
-    for (let j = 1; j < processes.length; j++) {
-      wt[j] = (processes[j - 1].arrivalTime + processes[j - 1].burstTime + wt[j - 1]) - processes[j].arrivalTime;
-
-      // If waiting time is negative, change it to zero
-      if (wt[j] < 0) {
-        wt[j] = 0;
-      }
-
-      waitingTime += wt[j]
-    }
-
-    // Calculate turnaround time
-    for (let k = 0; k < processes.length; k++) {
-      tat[k] = processes[k].burstTime + wt[k];
-      turnaroundTime += tat[k]
-    }
-
-    console.log("SJF Results: ")
-    console.log("Avg Waiting time: " + waitingTime / processes.length)
-    console.log("Avg Turnaround time: " + turnaroundTime / processes.length)
-
-    return { waitingTime, turnaroundTime }
-  }
-
-  // TODO: Priority is not working
-  const runPriority = (queue) => {
-    const processes = queue.sort((a, b) => {
-      if (a.arrivalTime === b.arrivalTime) {
-        return a.priority - b.priority
-      }
-      return a.arrivalTime - b.arrivalTime
-    });
-
-    let wt = []
-    let tat = []
-    let waitingTime = 0
-    let turnaroundTime = 0
-    wt[0] = 0;
-
-    // Calculate waiting time and turnaround time for every process
-    for (let j = 1; j < processes.length; j++) {
-      wt[j] = (processes[j - 1].arrivalTime + processes[j - 1].burstTime + wt[j - 1]) - processes[j].arrivalTime;
-
-      // If waiting time is negative, change it to zero
-      if (wt[j] < 0) {
-        wt[j] = 0;
-      }
-
-      console.log("Priority Results: ")
-      console.log("Avg Waiting time: " + waitingTime / processes.length)
-      console.log("Avg Turnaround time: " + turnaroundTime / processes.length)
-
-      waitingTime += wt[j]
-    }
-
-    // Calculate turnaround time
-    for (let k = 0; k < processes.length; k++) {
-      tat[k] = processes[k].burstTime + wt[k];
-      turnaroundTime += tat[k]
-    }
-
-    return { waitingTime, turnaroundTime }
-  }
 
 </script>
 
@@ -282,68 +192,6 @@
         <h5 class="card-title mb-4">
           Multilevel Queue Scheduling
         </h5>
-
-        <!-- Queue -->
-        <label class="form-label">No. of Queue</label>
-        <div class="row g-3">
-          <div class="col-auto">
-            <input type="number" class="form-control" placeholder="Number" v-model="numberOfQueue">
-          </div>
-          <div class="col-auto">
-            <button type="submit" class="btn btn-primary mb-3" @click="updateForms">Change</button>
-          </div>
-        </div>
-        <!-- END Queue -->
-
-        <hr class="my-4">
-
-        <div v-for="(queue, index) in levels">
-          <template v-if="parseInt(queue.value) === 2">
-            <form class="row g-3 mb-3">
-              <div class="col">
-                <label class="form-label">Queue {{ index+1 }}</label>
-                <select class="form-select" v-model="queue.value">
-                  <option value="0">First Come First Serve</option>
-                  <option value="1">Shortest Job First</option>
-                  <option value="2">Priority</option>
-                  <option value="3">Round Robin</option>
-                </select>
-              </div>
-              <div class="col">
-                <label class="form-label">Priority</label>
-                <input v-model="prioritiesInput" type="text" class="form-control" placeholder="0 1 2 4 5">
-              </div>
-            </form>
-          </template>
-          <template v-else-if="parseInt(queue.value) === 3">
-            <form class="row g-3 mb-3">
-              <div class="col">
-                <label class="form-label">Queue {{ index+1 }}</label>
-                <select class="form-select" v-model="queue.value">
-                  <option value="0">First Come First Serve</option>
-                  <option value="1">Shortest Job First</option>
-                  <option value="2">Priority</option>
-                  <option value="3">Round Robin</option>
-                </select>
-              </div>
-              <div class="col">
-                <label class="form-label">Quantum</label>
-                <input v-model="quantumInput" type="number" class="form-control" placeholder="1">
-              </div>
-            </form>
-          </template>
-          <template v-else>
-            <div class="mb-3">
-              <label class="form-label">Queue {{ index+1 }}</label>
-              <select class="form-select" v-model="queue.value">
-                <option value="0">First Come First Serve</option>
-                <option value="1">Shortest Job First</option>
-                <option value="2">Priority</option>
-                <option value="3">Round Robin</option>
-              </select>
-            </div>
-          </template>
-        </div>
 
         <hr class="my-4">
 
@@ -365,6 +213,7 @@
         <div class="mb-3">
           <label class="form-label">Queue</label>
           <input type="text" class="form-control" placeholder="1 2 3 4" v-model="queueInput">
+          <p class="form-text">0 - FCFS, 1 - SJF</p>
         </div>
         <!-- END Burst Time -->
 
@@ -376,6 +225,28 @@
         <h5 class="card-title mb-4">
           Results
         </h5>
+
+        <div v-if="processes.length > 0">
+          <table class="table">
+            <thead>
+            <tr>
+              <th scope="col">PID</th>
+              <th scope="col">Waiting Time</th>
+              <th scope="col">Response Time</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr v-for="process in processes">
+              <th scope="row">{{ process.pid }}</th>
+              <td>{{ process.waitingTime }}</td>
+              <td>{{ process.completionTime }}</td>
+            </tr>
+            </tbody>
+          </table>
+
+          <p>Average Waiting Time: {{ averageWaitingTime }}</p>
+          <p>Average Turnaround Time: {{ averageTurnaroundTime }}</p>
+        </div>
       </div>
     </div>
   </section>
