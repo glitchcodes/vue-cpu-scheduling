@@ -16,17 +16,16 @@
 
       this.completionTime = 0
       this.waitingTime = 0
-      this.turnaroundTime = 0
     }
   }
 
   const scheduleProcesses = (processes) => {
     // Sort processes by their priority
     processes.sort((a, b) => {
-        if (a.arrivalTime === b.arrivalTime) {
-            return a.priority - b.priority
-        }
+      if (a.priority === b.priority) {
         return a.arrivalTime - b.arrivalTime
+      }
+      return a.priority - b.priority
     });
 
     let totalWaitingTime = 0
@@ -34,23 +33,21 @@
 
     // Get the completion time, turnaround time and waiting time for the 1st process
     // For some reason, tracking current time gives different results
-    processes[0].completionTime = processes[0].arrivalTime + processes[0].burstTime
-    processes[0].turnaroundTime = processes[0].completionTime - processes[0].arrivalTime
-    processes[0].waitingTime = processes[0].turnaroundTime - processes[0].burstTime
+    processes[0].completionTime = processes[0].burstTime
+    processes[0].waitingTime = 0
 
     totalWaitingTime += processes[0].waitingTime
-    totalTurnaroundTime += processes[0].turnaroundTime
+    totalTurnaroundTime += processes[0].completionTime
 
     // Calculate every process starting with 2nd process
     for (let i = 1; i < processes.length; i++) {
       const process = processes[i]
 
-      process.completionTime = processes[i-1].completionTime + process.burstTime
-      process.turnaroundTime = process.completionTime - process.arrivalTime;
-      process.waitingTime = process.turnaroundTime - process.burstTime
+      process.waitingTime += processes[i - 1].completionTime
+      process.completionTime += processes[i - 1].completionTime + process.burstTime
 
       totalWaitingTime += process.waitingTime;
-      totalTurnaroundTime += process.turnaroundTime;
+      totalTurnaroundTime += process.completionTime;
     }
 
     const averageWaitingTime = totalWaitingTime / processes.length
@@ -237,7 +234,7 @@
             <tr v-for="process in result.processes">
               <th scope="row">{{ process.pid }}</th>
               <td>{{ process.waitingTime }}</td>
-              <td>{{ process.turnaroundTime }}</td>
+              <td>{{ process.completionTime }}</td>
             </tr>
             </tbody>
           </table>
